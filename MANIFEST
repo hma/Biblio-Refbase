@@ -1,0 +1,13 @@
+Changes
+MANIFEST
+META.yml
+Makefile.PL
+README
+lib/Biblio/Refbase.pm
+t/00-load.t
+t/01-constructor.t
+t/02-accessors.t
+t/03-static-methods.t
+t/04-methods.t
+t/05-pod.t
+t/06-pod-coverage.t
