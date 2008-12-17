@@ -5,7 +5,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.0.1';
+our $VERSION = '0.0.2';
 
 use Carp;
 use HTTP::Request::Common;
@@ -28,6 +28,7 @@ use constant REFBASE_DEFAULT_FORMAT   => 'ASCII';
 use constant REFBASE_MSG_NO_HITS      => 'Nothing found';
 use constant REFBASE_MSG_FORBIDDEN    => 'you have no permission';
 use constant REFBASE_MSG_ERROR        => 'The following error occurred';
+use constant REFBASE_MSG_QUERY_ERROR  => 'Your query:';
 
 use constant REFBASE_EXPORT_FORMATS => (
   'ADS',
@@ -87,6 +88,8 @@ use constant REFBASE_QUERY_PARAMS => (
   'location',
   'serial',
   'date',
+  'contribution_id',
+  'where',
 );
 
 
@@ -266,7 +269,7 @@ sub upload {
         $response->message('Unexpected redirect location');
       }
     }
-    elsif (index(${$response->content_ref}, REFBASE_MSG_FORBIDDEN) == 0) {
+    elsif (index(${$response->content_ref}, scalar REFBASE_MSG_FORBIDDEN) == 0) {
       $response->code(RC_FORBIDDEN);
       $response->message('');
     }
@@ -282,8 +285,8 @@ sub ping {
   my $self = shift;
   unshift @_, 'url' if @_ % 2;
 
-  # use 'simple_request' instead of 'head' so redirects won't be followed
-  # thus a redirect (e.g. to error page) will fail, too
+  # use 'simple_request' instead of 'head' so redirections won't be followed
+  # thus a redirection (e.g. to error page) will fail, too
   return $self->ua->simple_request(
     HEAD $self->_account_args({ @_ })->{'url'}
   )->is_success;
@@ -320,9 +323,10 @@ my %_formats = map {
 } REFBASE_EXPORT_FORMATS;
 
 for (REFBASE_CITATION_FORMATS) {
-  my %params = ( 'citeType' => $_ );
-  $params{'submit'} = 'Cite' unless $_ eq 'HTML';
-  $_formats{_normalize_format_name($_)} = \%params;
+  $_formats{_normalize_format_name($_)} = {
+    'citeType' => $_ ,
+    'submit'   => 'Cite'
+  };
 }
 
 my %_styles = map {
@@ -400,7 +404,7 @@ sub _search {
     # idea: could parse number of hits from content when using ASCII format
     # or explicitly re-send query with format=ASCII and rows=1
     # then set $response->rows, too!
-    $response->hits(index(${$response->content_ref}, REFBASE_MSG_NO_HITS) == 0 ? 0 : 1);
+    $response->hits(index(${$response->content_ref}, scalar REFBASE_MSG_NO_HITS) == 0 ? 0 : 1);
   }
   return $response;
 }
@@ -418,7 +422,7 @@ sub _request {
 
     if (defined(my $location = $response->header('location'))) {
       if ($location =~ /^${\REFBASE_LOGIN}(\?|$)/o) {
-        # handle redirect to login page
+        # handle redirection to login page
 
         # undefine stored session string
         $self->_session($account, undef);
@@ -436,7 +440,7 @@ sub _request {
         }
       }
       elsif ($location =~ /^${\REFBASE_ERROR}(\?|$)/o) {
-        # turn redirect to error page into HTTP error
+        # turn redirection to error page into HTTP error
         my $q = URI->new($location)->query_form_hash;
         my $content = $q->{'headerMsg'} ? $q->{'headerMsg'} . ' ' : '';
         $content   .= $q->{'errorMsg'} if $q->{'errorMsg'};
@@ -445,16 +449,23 @@ sub _request {
         $response->content($content);
       }
       elsif ($redirect) {
-        # follow the redirect with redirect count subtracted by 1
+        # follow the redirection with redirect count subtracted by 1
         return $self->_request($account, GET($account->{'url'} . $location), $redirect - 1);
       }
     }
-    elsif ($response->is_success
-      and index(${$response->content_ref}, REFBASE_MSG_ERROR) == 0) {
-      # inconsistency in refbase: POST to show.php in search method
-      # does not return redirect to error.php when MySQL database fails
-      $response->code(RC_INTERNAL_SERVER_ERROR);
-      $response->message('');
+    elsif ($response->is_success) {
+      if (index(${$response->content_ref}, scalar REFBASE_MSG_ERROR) == 0) {
+        # inconsistency in refbase: POST to show.php in search method
+        # does not return redirection to error.php when MySQL database fails
+        $response->code(RC_INTERNAL_SERVER_ERROR);
+        $response->message('');
+      }
+      elsif (index(${$response->content_ref}, scalar REFBASE_MSG_QUERY_ERROR) == 0) {
+        # inconsistency in refbase: GET from search.php (redirected by a POST)
+        # does not return redirection to error.php when SQL query is broken
+        $response->code(RC_BAD_REQUEST);
+        $response->message('');
+      }
     }
     return bless $response, 'Biblio::Refbase::Response';
   }
@@ -651,7 +662,7 @@ Biblio::Refbase - Perl interface to refbase bibliographic manager
 
 =head1 VERSION
 
-This is Biblio::Refbase version 0.0.1, tested against refbase 0.9.5.
+This is Biblio::Refbase version 0.0.2, tested against refbase 0.9.5.
 
 =head1 SYNOPSIS
 
@@ -888,6 +899,10 @@ the same style:
 
 Calling the C<styles> method returns a list of the known citation styles.
 
+For more details on the styles and examples refer to page
+'Citation styles' (L<http://www.refbase.net/index.php/Citation_styles>)
+in the refbase documentation.
+
 =item $refbase->order;
 
 Returns/sets the default sort order for this instance.
@@ -957,12 +972,21 @@ The following keys correspond to fields in the refbase database:
   location          Location
   serial            Serial (ID)
   date              Creation date
+  contribution_id   institutional abbreviation
 
 The 'date' key requires a date string in the format 'YYYY-MM-DD'.
 The other fields can be searched with MySQL regular expressions.
 For further details look at section 'Search syntax'
 (L<http://www.refbase.net/index.php/Searching#Search_syntax>)
-in the refbase documentation.
+in the refbase documentation. For an explanation of the database fields
+refer to page 'Table refs' (L<http://www.refbase.net/index.php/Table_refs>).
+
+Custom search conditions:
+
+  where       code for SQL WHERE clause
+
+The content of the 'where' key must be valid MySQL code which refbase
+will insert into the WHERE clause of its internally generated SQL query.
 
 Field independent search arguments are:
 
@@ -1080,6 +1104,8 @@ the base class.
 
 =head1 EXAMPLES
 
+=head2 Searching
+
 First, a very simple example that will just perform a search without
 applying any user parameters:
 
@@ -1131,6 +1157,8 @@ the appropriate UNAUTHORIZED status code set and a short message
   if (($response = $refbase->search)->is_error) {
     print 'An error occurred: ', $response->status_line, "\n";
   }
+
+=head2 Uploading data to refbase
 
 More examples will be included in the next releases of this module.
 Please refer to the L<"SYNOPSIS"> section for now.

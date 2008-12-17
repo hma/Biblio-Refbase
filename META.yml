@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Biblio-Refbase
-version:             0.0.1
+version:             0.0.2
 abstract:            Perl interface to refbase bibliographic manager
 license:             perl
 author:              
