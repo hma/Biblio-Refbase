@@ -1,0 +1,13 @@
+*~
+*.bak
+*.old
+blib
+cover_db
+Debian_CPANTS.txt
+Makefile
+META.yml
+nytprof*
+pm_to_blib
+tmp
+TODO
+Biblio-Refbase-*
