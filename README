@@ -13,14 +13,14 @@ SYNOPSIS
 
     use Biblio::Refbase;
 
-    $refbase = Biblio::Refbase->new(
-      'url'      => 'http://beta.refbase.net/',
-      'user'     => 'guest@refbase.net',
-      'password' => 'guest',
+    my $refbase = Biblio::Refbase->new(
+      url      => 'http://beta.refbase.net/',
+      user     => 'guest@refbase.net',
+      password => 'guest',
     );
-    $response = $refbase->search(
-      'keywords' => 'baltic sea',  # Search in keywords.
-      'style'    => 'Chicago',     # Set citation style.
+    my $response = $refbase->search(
+      keywords => 'baltic sea',    # Search in keywords.
+      style    => 'Chicago',       # Set citation style.
     );
     if ($response->is_success) {   # all methods from
       if ($response->hits) {       # HTTP::Response
@@ -36,13 +36,13 @@ SYNOPSIS
     print "\n\n";
 
     $response = $refbase->upload(
-      'user'       => 'user@refbase.net',  # Switch user for
-      'password'   => 'user',              # this request.
-      'show'       => 1,                   # Return records
-      'format'     => 'BibTeX',            # in BibTeX format.
-      'source_ids' => [                    # Upload records
-        'arXiv:cs/0106057',                # from arXiv.org
-        'arXiv:cond-mat/0210361',          # via source IDs.
+      user       => 'user@refbase.net',  # Switch user for
+      password   => 'user',              # this request.
+      show       => 1,                   # Return records
+      format     => 'BibTeX',            # in BibTeX format.
+      source_ids => [                    # Upload records
+        'arXiv:cs/0106057',              # from arXiv.org
+        'arXiv:cond-mat/0210361',        # via source IDs.
       ],
     );
     if ($response->is_success) {
@@ -52,7 +52,7 @@ SYNOPSIS
     }
 
     # Upload records by supplying a string of content:
-    # $response = $refbase->upload('content' => $content);
+    # $response = $refbase->upload( content => $content );
 
 
 INSTALLATION
@@ -69,11 +69,11 @@ DEPENDENCIES
 
 This module requires these other modules:
 
-    Carp
     HTTP::Request::Common
+    HTTP::Response
     HTTP::Status
     LWP::UserAgent
-    Test::More            (required by "make test")
+    Test::More 0.62+      (required by "make test")
     URI
     URI::QueryParam
 
@@ -88,12 +88,13 @@ the perldoc command:
 
 COPYRIGHT AND LICENCE
 
-Copyright (c) 2008 Henning Manske. All rights reserved.
+Copyright (c) 2008-2010 Henning Manske. All rights reserved.
 
 This module is free software. You can redistribute it and/or modify it
-under the same terms as Perl itself.
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
 
-See http://www.perl.com/perl/misc/Artistic.html
+See http://dev.perl.org/licenses/
 
 This module is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of

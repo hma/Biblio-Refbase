@@ -5,11 +5,13 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.0.2';
+our $VERSION = '0.03_01';
+
+$VERSION = eval $VERSION;
 
 use Carp;
 use HTTP::Request::Common;
-use HTTP::Status;
+use HTTP::Status ':constants';
 use LWP::UserAgent;
 use URI;
 use URI::QueryParam;
@@ -105,7 +107,7 @@ sub new {
 
   my $self = bless {}, $class;
 
-  for (qw(url user password relogin format style order rows records ua)) {
+  for (qw'url user password relogin format style order rows records ua') {
     if (defined(my $value = delete $conf{$_})) {
       $self->$_($value);
     }
@@ -114,15 +116,15 @@ sub new {
   my $version = eval '$' . $class . '::VERSION';
   my $client = 'cli-' . join '-', split /::/, $class;
   $client .= '-' . $version if defined $version;
-  $self->{'_client'} = $client;
+  $self->{_client} = $client;
 
   unless ($self->ua) {
-    unless (defined $conf{'agent'}) {
+    unless (defined $conf{agent}) {
       my $agent = $class;
       $agent .= ' ' . $version if defined $version;
-      $conf{'agent'} = $agent;
+      $conf{agent} = $agent;
     }
-    $conf{'env_proxy'} = 1 unless exists $conf{'env_proxy'};
+    $conf{env_proxy} = 1 unless exists $conf{env_proxy};
     $self->ua(LWP::UserAgent->new(%conf));
   }
 
@@ -156,10 +158,10 @@ sub format {
   if (@_) {
     my $format = shift;
     _check_format($format);
-    $self->{'format'} = $format;
+    $self->{format} = $format;
     return $self;
   }
-  $self->{'format'};
+  $self->{format};
 }
 
 sub style {
@@ -167,10 +169,10 @@ sub style {
   if (@_) {
     my $style = shift;
     _check_style($style);
-    $self->{'style'} = $style;
+    $self->{style} = $style;
     return $self;
   }
-  $self->{'style'};
+  $self->{style};
 }
 
 sub order {
@@ -191,10 +193,10 @@ sub ua {
     my $ua = shift;
     croak q{Accessor 'ua' requires an object based on 'LWP::UserAgent'}
       unless ref $ua and $ua->isa('LWP::UserAgent');
-    $self->{'ua'} = $ua;
+    $self->{ua} = $ua;
     return $self;
   }
-  $self->{'ua'};
+  $self->{ua};
 }
 
 
@@ -226,7 +228,7 @@ sub upload {
   my $account = $self->_account_args(\%args);
   my $upload  = $self->_upload_args(\%args);
 
-  my $show = delete $args{'show'};
+  my $show = delete $args{show};
   $show = %args unless defined $show;
 
   my $search = $self->_search_args(\%args);
@@ -236,10 +238,10 @@ sub upload {
       . join("\n    ", '', sort keys %args) . "\n";
   }
 
-  my $url = $account->{'url'} . REFBASE_IMPORT;
+  my $url = $account->{url} . REFBASE_IMPORT;
 
-  my $request = $upload->{'uploadFile'}
-    ? POST $url, 'Content_Type' => 'form-data', 'Content' => $upload
+  my $request = $upload->{uploadFile}
+    ? POST $url, Content_Type => 'form-data', Content => $upload
     : POST $url, $upload;
 
   my $response = $self->_request($account, $request);
@@ -248,33 +250,33 @@ sub upload {
     if (defined(my $location = $response->header('location'))) {
       if ($location =~ /^(${\REFBASE_SHOW}\?)/o) {
         my $q = URI->new($location)->query_form_hash;
-        my ($rows) = ($q->{'headerMsg'} || '') =~ /(\d+)/;
-        my $records = $q->{'records'} || '';
+        my ($rows) = ($q->{headerMsg} || '') =~ /(\d+)/;
+        my $records = $q->{records} || '';
         if ($show) {
-          $search->{'records'} ||= $q->{'records'};
-          $search->{'rows'} ||= $rows;
+          $search->{records} ||= $q->{records};
+          $search->{rows} ||= $rows;
           $response = $self->_search($account, $search);
         }
         else {
-          my $content = $q->{'headerMsg'} ? $q->{'headerMsg'} . ' ' : '';
-          $content   .= $q->{'records'}  if $q->{'records'};
-          $response->code(RC_OK);
+          my $content = $q->{headerMsg} ? $q->{headerMsg} . ' ' : '';
+          $content   .= $q->{records}  if $q->{records};
+          $response->code(HTTP_OK);
           $response->message('');
           $response->content($content);
         }
         $response->records($records)->rows($rows);
       }
       else {
-        $response->code(RC_NOT_IMPLEMENTED);
+        $response->code(HTTP_NOT_IMPLEMENTED);
         $response->message('Unexpected redirect location');
       }
     }
     elsif (index(${$response->content_ref}, scalar REFBASE_MSG_FORBIDDEN) == 0) {
-      $response->code(RC_FORBIDDEN);
+      $response->code(HTTP_FORBIDDEN);
       $response->message('');
     }
     else {
-      $response->code(RC_NOT_IMPLEMENTED);
+      $response->code(HTTP_NOT_IMPLEMENTED);
       $response->message('Unexpected response');
     }
   }
@@ -288,7 +290,7 @@ sub ping {
   # use 'simple_request' instead of 'head' so redirections won't be followed
   # thus a redirection (e.g. to error page) will fail, too
   return $self->ua->simple_request(
-    HEAD $self->_account_args({ @_ })->{'url'}
+    HEAD $self->_account_args({ @_ })->{url}
   )->is_success;
 }
 
@@ -316,16 +318,16 @@ sub styles {
 
 my %_formats = map {
   _normalize_format_name($_) => {
-    'exportFormat' => $_,
-    'submit'       => 'Export',
-    'exportType'   => 'file'
+    exportFormat => $_,
+    submit       => 'Export',
+    exportType   => 'file'
   }
 } REFBASE_EXPORT_FORMATS;
 
 for (REFBASE_CITATION_FORMATS) {
   $_formats{_normalize_format_name($_)} = {
-    'citeType' => $_ ,
-    'submit'   => 'Cite'
+    citeType => $_ ,
+    submit   => 'Cite'
   };
 }
 
@@ -397,7 +399,7 @@ sub _accessor {
 sub _search {
   my ($self, $account, $param) = @_;
 
-  my $request = POST $account->{'url'} . REFBASE_SHOW, $param;
+  my $request = POST $account->{url} . REFBASE_SHOW, $param;
   my $response = $self->_request($account, $request, 1);
 
   if ($response->is_success) {
@@ -413,11 +415,11 @@ sub _search {
 
 sub _request {
   my ($self, $account, $request, $redirect) = @_;
-  my $relogin = $account->{'relogin'};
+  my $relogin = $account->{relogin};
   my $failed = 0;
   {
     # catch possible login failure
-    eval { $request->header('cookie' => $self->_session($account)) };
+    eval { $request->header( cookie => $self->_session($account) ) };
     my $response = $@ ? $@ : $self->ua->simple_request($request);
 
     if (defined(my $location = $response->header('location'))) {
@@ -431,39 +433,39 @@ sub _request {
           redo;
         }
         elsif ($relogin < 1) {
-          $response->code(RC_REQUEST_TIMEOUT);
+          $response->code(HTTP_REQUEST_TIMEOUT);
           $response->message('Relogin required but disabled');
         }
         else {
-          $response->code(RC_UNAUTHORIZED);
+          $response->code(HTTP_UNAUTHORIZED);
           $response->message("Relogin failed (tried $relogin times)");
         }
       }
       elsif ($location =~ /^${\REFBASE_ERROR}(\?|$)/o) {
         # turn redirection to error page into HTTP error
         my $q = URI->new($location)->query_form_hash;
-        my $content = $q->{'headerMsg'} ? $q->{'headerMsg'} . ' ' : '';
-        $content   .= $q->{'errorMsg'} if $q->{'errorMsg'};
-        $response->code(RC_INTERNAL_SERVER_ERROR);
+        my $content = $q->{headerMsg} ? $q->{headerMsg} . ' ' : '';
+        $content   .= $q->{errorMsg} if $q->{errorMsg};
+        $response->code(HTTP_INTERNAL_SERVER_ERROR);
         $response->message('');
         $response->content($content);
       }
       elsif ($redirect) {
         # follow the redirection with redirect count subtracted by 1
-        return $self->_request($account, GET($account->{'url'} . $location), $redirect - 1);
+        return $self->_request($account, GET($account->{url} . $location), $redirect - 1);
       }
     }
     elsif ($response->is_success) {
       if (index(${$response->content_ref}, scalar REFBASE_MSG_ERROR) == 0) {
         # inconsistency in refbase: POST to show.php in search method
         # does not return redirection to error.php when MySQL database fails
-        $response->code(RC_INTERNAL_SERVER_ERROR);
+        $response->code(HTTP_INTERNAL_SERVER_ERROR);
         $response->message('');
       }
       elsif (index(${$response->content_ref}, scalar REFBASE_MSG_QUERY_ERROR) == 0) {
         # inconsistency in refbase: GET from search.php (redirected by a POST)
         # does not return redirection to error.php when SQL query is broken
-        $response->code(RC_BAD_REQUEST);
+        $response->code(HTTP_BAD_REQUEST);
         $response->message('');
       }
     }
@@ -476,23 +478,23 @@ sub _request {
 sub _session {
   my $self = shift;
   my $account = shift;
-  my $url  = $account->{'url'};
-  my $user = $account->{'user'};
+  my $url  = $account->{url};
+  my $user = $account->{user};
   if (@_) {
     $_sessions{$url}->{$user} = shift;
     return $self;
   }
   unless ($_sessions{$url}->{$user}) {
     my $response = $self->ua->simple_request(POST $url . REFBASE_LOGIN, {
-      'loginEmail'    => $user,
-      'loginPassword' => $account->{'password'},
+      loginEmail    => $user,
+      loginPassword => $account->{password},
     });
     if ($response->is_redirect and my $cookie = $response->header('set-cookie')) {
       $_sessions{$url}->{$user} = (split /;/, $cookie)[0];
     }
     else {
       unless ($response->is_error) {
-        $response->code(RC_UNAUTHORIZED);
+        $response->code(HTTP_UNAUTHORIZED);
         $response->message('Login request denied');
         # wipe out HTML page
         $response->content('');
@@ -509,31 +511,31 @@ sub _session {
 sub _account_args {
   my ($self, $args) = @_;
 
-  my $url = delete $args->{'url'} || $self->url || REFBASE_DEFAULT_URL;
+  my $url = delete $args->{url} || $self->url || REFBASE_DEFAULT_URL;
   $url .= '/' if substr($url, -1) ne '/';
   $url = 'http://' . $url unless $url =~ m{^https?://};
 
-  my $relogin = delete $args->{'relogin'};
+  my $relogin = delete $args->{relogin};
   $relogin = $self->relogin unless defined $relogin;
   $relogin = defined $relogin && $relogin =~ /(\d+)/ ? int $1 : REFBASE_DEFAULT_RELOGIN;
 
   return {
-    'url'      => $url,
-    'user'     => delete $args->{'user'}     || $self->user     || REFBASE_DEFAULT_USER,
-    'password' => delete $args->{'password'} || $self->password || REFBASE_DEFAULT_PASSWORD,
-    'relogin'  => $relogin,
+    url      => $url,
+    user     => delete $args->{user}     || $self->user     || REFBASE_DEFAULT_USER,
+    password => delete $args->{password} || $self->password || REFBASE_DEFAULT_PASSWORD,
+    relogin  => $relogin,
   };
 }
 
 # mapping of module's argument names to refbase names
 
 my %_names = (
-  'records' => 'records',
-  'order'   => 'citeOrder',
-  'rows'    => 'showRows',
-  'start'   => 'startRecord',
-  'query'   => 'queryType',
-  'view'    => 'viewType',
+  records => 'records',
+  order   => 'citeOrder',
+  rows    => 'showRows',
+  start   => 'startRecord',
+  query   => 'queryType',
+  view    => 'viewType',
 );
 
 # setup search parameters from arguments hash, dynamic and static defaults
@@ -547,35 +549,35 @@ sub _search_args {
       $param{$_} = $value;
     }
   }
-  $param{'serial'} = '.+' unless %param;
+  $param{serial} = '.+' unless %param;
 
-  my $format = $self->_format(delete $args->{'format'});
+  my $format = $self->_format(delete $args->{format});
   @param{keys %$format} = values %$format;
 
-  if (not exists $args->{'style'} or defined(my $style = delete $args->{'style'})) {
+  if (not exists $args->{style} or defined(my $style = delete $args->{style})) {
     if (defined($style = $self->_style($style))) {
-      $param{'citeStyle'} = $style;
+      $param{citeStyle} = $style;
     }
   }
 
-  for (qw(records order rows)) {
+  for (qw'records order rows') {
     if (my $value = delete $args->{$_} || $self->$_) {
       $param{$_names{$_}} = $value;
     }
   }
-  for (qw(start query view)) {
+  for (qw'start query view') {
     if (my $value = delete $args->{$_}) {
       $param{$_names{$_}} = $value;
     }
   }
 
-  if (delete $args->{'showquery'}) {
-    $param{'showQuery'} = 1;
+  if (delete $args->{showquery}) {
+    $param{showquery} = 1;
   }
-  if (defined(my $showlinks = delete $args->{'showlinks'})) {
-    $param{'showLinks'} = 0 if $showlinks eq '0';
+  if (defined(my $showlinks = delete $args->{showLinks})) {
+    $param{showLinks} = 0 if $showlinks eq '0';
   }
-  $param{'client'} = $self->{'_client'};
+  $param{client} = $self->{_client};
 
   return \%param;
 }
@@ -586,28 +588,28 @@ sub _upload_args {
   my ($self, $args) = @_;
   my %param;
 
-  if (defined(my $content = delete $args->{'content'})) {
-    $param{'uploadFile'} = [ undef, 'filename', 'Content' => $content ];
-    $param{'formType'} = 'import';
+  if (defined(my $content = delete $args->{content})) {
+    $param{uploadFile} = [ undef, 'filename', Content => $content ];
+    $param{formType} = 'import';
   }
-  elsif (defined(my $source_ids = delete $args->{'source_ids'})) {
-    $param{'sourceIDs'} = ref $source_ids eq 'ARRAY'
+  elsif (defined(my $source_ids = delete $args->{source_ids})) {
+    $param{sourceIDs} = ref $source_ids eq 'ARRAY'
       ? join ' ', @$source_ids
       : $source_ids;
-    $param{'formType'} = 'importID';
+    $param{formType} = 'importID';
   }
   else {
     croak q{upload requires either record content supplied by parameter 'content' or }
         . q{a list of record IDs in parameter 'source_ids'};
   }
-  if (delete $args->{'skipbad'}) {
-    $param{'skipBadRecords'} = 1;
+  if (delete $args->{skipbad}) {
+    $param{skipBadRecords} = 1;
   }
-  if (defined(my $only = delete $args->{'only'})) {
-    $param{'importRecords'} = $only;
-    $param{'importRecordsRadio'} = 'only';
+  if (defined(my $only = delete $args->{only})) {
+    $param{importRecords} = $only;
+    $param{importRecordsRadio} = 'only';
   }
-  $param{'client'} = $self->{'_client'};
+  $param{client} = $self->{_client};
 
   return \%param;
 }
@@ -668,14 +670,14 @@ This is Biblio::Refbase version 0.0.2, tested against refbase 0.9.5.
 
   use Biblio::Refbase;
 
-  $refbase = Biblio::Refbase->new(
-    'url'      => 'http://beta.refbase.net/',
-    'user'     => 'guest@refbase.net',
-    'password' => 'guest',
+  my $refbase = Biblio::Refbase->new(
+    url      => 'http://beta.refbase.net/',
+    user     => 'guest@refbase.net',
+    password => 'guest',
   );
-  $response = $refbase->search(
-    'keywords' => 'baltic sea',  # Search in keywords.
-    'style'    => 'Chicago',     # Set citation style.
+  my $response = $refbase->search(
+    keywords => 'baltic sea',    # Search in keywords.
+    style    => 'Chicago',       # Set citation style.
   );
   if ($response->is_success) {   # all methods from
     if ($response->hits) {       # HTTP::Response
@@ -691,13 +693,13 @@ This is Biblio::Refbase version 0.0.2, tested against refbase 0.9.5.
   print "\n\n";
 
   $response = $refbase->upload(
-    'user'       => 'user@refbase.net',  # Switch user for
-    'password'   => 'user',              # this request.
-    'show'       => 1,                   # Return records
-    'format'     => 'BibTeX',            # in BibTeX format.
-    'source_ids' => [                    # Upload records
-      'arXiv:cs/0106057',                # from arXiv.org
-      'arXiv:cond-mat/0210361',          # via source IDs.
+    user       => 'user@refbase.net',  # Switch user for
+    password   => 'user',              # this request.
+    show       => 1,                   # Return records
+    format     => 'BibTeX',            # in BibTeX format.
+    source_ids => [                    # Upload records
+      'arXiv:cs/0106057',              # from arXiv.org
+      'arXiv:cond-mat/0210361',        # via source IDs.
     ],
   );
   if ($response->is_success) {
@@ -707,7 +709,7 @@ This is Biblio::Refbase version 0.0.2, tested against refbase 0.9.5.
   }
 
   # Upload records by supplying a string of content:
-  # $response = $refbase->upload('content' => $content);
+  # $response = $refbase->upload( content => $content );
 
 =head1 DESCRIPTION
 
@@ -764,8 +766,8 @@ E.g. you can set your own user agent identification and specify a timeout
 this way:
 
   $refbase = Biblio::Refbase->new(
-    'agent'   => 'My Refbase Client',
-    'timeout' => 5,
+    agent   => 'My Refbase Client',
+    timeout => 5,
   );
 
 =item $refbase = Biblio::Refbase->new($url);
@@ -1189,7 +1191,7 @@ L<http://cli.refbase.net/>
 
 =head1 AUTHOR
 
-Henning Manske (hma@cpan.org)
+Henning Manske <hma@cpan.org>
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -1199,12 +1201,13 @@ and commenting on the documentation.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2008 Henning Manske. All rights reserved.
+Copyright (c) 2008-2010 Henning Manske. All rights reserved.
 
 This module is free software. You can redistribute it and/or modify it
-under the same terms as Perl itself.
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
 
-See L<http://www.perl.com/perl/misc/Artistic.html>.
+See L<http://dev.perl.org/licenses/>.
 
 This module is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of

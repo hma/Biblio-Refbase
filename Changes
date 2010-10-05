@@ -1,4 +1,9 @@
-Revision history for Perl extension Biblio::Refbase
+Revision history for Perl extension Biblio-Refbase
+
+0.03_01 Oct 05, 2010
+
+        - Modernized distribution (no functional changes)
+        - Reverted to 2-level version number
 
 0.0.2   Dec 17, 2008
 

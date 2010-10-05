@@ -8,9 +8,9 @@ use Test::More;
 use Biblio::Refbase;
 use LWP::UserAgent;
 
-my @accessors = qw(url user password relogin order rows records);
+my @accessors = qw'url user password relogin order rows records';
 
-plan 'tests' => @accessors * 6 + 22;
+plan tests => @accessors * 6 + 22;
 
 my $refbase = Biblio::Refbase->new;
 my ($set, $obj, $gotten);
