@@ -5,7 +5,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.04_01';
 
 $VERSION = eval $VERSION;
 
@@ -664,7 +664,7 @@ Biblio::Refbase - Perl interface to refbase bibliographic manager
 
 =head1 VERSION
 
-This is Biblio::Refbase version 0.0.2, tested against refbase 0.9.5.
+This is Biblio::Refbase version 0.04_01, tested against refbase 0.9.5.
 
 =head1 SYNOPSIS
 

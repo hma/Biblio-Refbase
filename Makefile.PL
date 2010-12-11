@@ -24,8 +24,8 @@ my $META = {
   },
   resources => {
     homepage   => "http://search.cpan.org/dist/$dist/",
-    bugtracker => "http://github.com/hma/$dist/issues",
-    repository => "http://github.com/hma/$dist",
+    bugtracker => "https://github.com/hma/$dist/issues",
+    repository => "https://github.com/hma/$dist",
     license    => 'http://dev.perl.org/licenses/',
   },
 };
