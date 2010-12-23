@@ -7,6 +7,7 @@
 ^Debian_CPANTS\.txt$
 ^Makefile$
 ^MANIFEST\.SKIP$
+^MYMETA\.yml$
 ^nytprof
 ^pm_to_blib$
 ^tmp/
