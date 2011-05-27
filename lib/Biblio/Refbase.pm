@@ -7,8 +7,6 @@ use warnings;
 
 our $VERSION = '0.04_01';
 
-$VERSION = eval $VERSION;
-
 use Carp;
 use HTTP::Request::Common;
 use HTTP::Status ':constants';
@@ -654,7 +652,7 @@ sub records { shift->_accessor('records', @_) }
 
 
 
-1;
+$VERSION = eval $VERSION;
 
 __END__
 
@@ -1201,7 +1199,7 @@ and commenting on the documentation.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2008-2010 Henning Manske. All rights reserved.
+Copyright (c) 2008-2011 Henning Manske. All rights reserved.
 
 This module is free software. You can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

@@ -1,9 +1,10 @@
 Revision history for Perl extension Biblio-Refbase
 
-0.04_01 Dec 17, 2010
+0.04_01 May 27, 2011
 
         - Switch GitHub URLs to https
         - Explicitly require Test::More 0.62 in tests
+        - Minor cosmetic changes
 
 0.04    Oct 10, 2010
 

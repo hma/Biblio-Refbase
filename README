@@ -86,9 +86,9 @@ the perldoc command:
     perldoc Biblio::Refbase
 
 
-COPYRIGHT AND LICENCE
+COPYRIGHT AND LICENSE
 
-Copyright (c) 2008-2010 Henning Manske. All rights reserved.
+Copyright (c) 2008-2011 Henning Manske. All rights reserved.
 
 This module is free software. You can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
